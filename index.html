@@ -56,14 +56,23 @@
             <div class="mb-3"><label class="form-label">Número de Celular *</label><input type="tel" class="form-control" id="celular" placeholder="Ej. 76543210" required></div>
             <button type="submit" class="btn-submit" id="btnEnviar">Enviar Formulación de Encuesta</button>
         </form>
+        <div id="bloqueConsulta" style="text-align:center;margin-top:25px;border-top:2px solid #e9ecef;padding-top:20px;">
+            <a href="#" id="linkConsulta" style="color:#003366;font-weight:bold;">¿Ya se inscribió? Consulte su cita con su RUDE</a>
+        </div>
+        <div id="pantallaConsulta" style="display:none;">
+            <div class="section-title">Consultar mi cita de entrevista</div>
+            <div class="mb-3"><label class="form-label">Número de RUDE *</label><input type="text" class="form-control" id="rudeConsulta" placeholder="Ingrese el RUDE del postulante"></div>
+            <button type="button" class="btn-submit" id="btnConsultar">Consultar</button>
+            <button type="button" class="btn-close" id="btnVolver" style="width:100%;margin-top:10px;">Volver</button>
+        </div>
         <div id="pantallaCarga" class="loading-box">
             <div class="spinner"></div>
             <h4 style="color:#003366;font-weight:bold;margin:0;">Asignando hora y fecha para su entrevista personal...</h4>
             <p style="color:#777;font-size:0.9rem;margin-top:5px;">Por favor, no cierre esta ventana.</p>
         </div>
         <div id="pantallaExito" class="success-box">
-            <h3 style="color:#28a745;margin:0 0 10px 0;">¡Muchas gracias por rellenar este formulario!</h3>
-            <p style="color:#666;margin:0;">Sus respuestas fueron aceptadas correctamente.</p>
+            <h3 id="tituloExito" style="color:#28a745;margin:0 0 10px 0;">¡Muchas gracias por rellenar este formulario!</h3>
+            <p id="subExito" style="color:#666;margin:0;">Sus respuestas fueron aceptadas correctamente.</p>
             <div id="citaAsignada" class="appointment-text"></div>
             <div class="btn-group-container">
                 <button class="btn-save" id="btnDescargar">📥 Guardar Cita</button>
@@ -114,6 +123,7 @@ document.getElementById('formularioCasc').addEventListener('submit', function (e
 function mostrarCita(texto) {
     textoCitaGlobal = texto;
     document.getElementById('pantallaCarga').style.display = 'none';
+    document.getElementById('pantallaConsulta').style.display = 'none';
     document.getElementById('citaAsignada').innerText = textoCitaGlobal;
     document.getElementById('pantallaExito').style.display = 'block';
 }
@@ -124,6 +134,51 @@ document.getElementById('btnDescargar').addEventListener('click', function () {
     l.href = URL.createObjectURL(b);
     l.download = "Cita_CASC_" + nombrePostulanteGlobal.replace(/\s+/g, '_') + ".txt";
     document.body.appendChild(l); l.click(); document.body.removeChild(l);
+});
+
+
+// ===== CONSULTAR CITA CON EL RUDE =====
+document.getElementById('linkConsulta').addEventListener('click', function (e) {
+    e.preventDefault();
+    document.getElementById('formularioCasc').style.display = 'none';
+    document.getElementById('bloqueConsulta').style.display = 'none';
+    document.getElementById('pantallaConsulta').style.display = 'block';
+});
+
+document.getElementById('btnVolver').addEventListener('click', function () {
+    document.getElementById('pantallaConsulta').style.display = 'none';
+    document.getElementById('formularioCasc').style.display = 'block';
+    document.getElementById('bloqueConsulta').style.display = 'block';
+});
+
+document.getElementById('btnConsultar').addEventListener('click', function () {
+    var rude = document.getElementById('rudeConsulta').value.trim();
+    if (!rude) { alert('Ingrese el número de RUDE.'); return; }
+
+    var btn = document.getElementById('btnConsultar');
+    btn.disabled = true; btn.innerText = 'Buscando...';
+
+    const params = new URLSearchParams();
+    params.append('accion', 'consultar');
+    params.append('rude', rude);
+
+    fetch(urlScript, { method: 'POST', body: params })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            btn.disabled = false; btn.innerText = 'Consultar';
+            if (data.status === 'success') {
+                nombrePostulanteGlobal = data.postulante || 'POSTULANTE';
+                document.getElementById('tituloExito').innerText = 'Su inscripción fue encontrada';
+                document.getElementById('subExito').innerText = 'Postulante: ' + nombrePostulanteGlobal;
+                mostrarCita(data.turno);
+            } else {
+                alert(data.mensaje || 'No se pudo consultar. Intente nuevamente.');
+            }
+        })
+        .catch(function () {
+            btn.disabled = false; btn.innerText = 'Consultar';
+            alert('No se pudo conectar con el servidor. Revise su internet e intente nuevamente.');
+        });
 });
 
 document.getElementById('btnCerrar').addEventListener('click', function () {
